@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+
+# Adicionados
+_datasets*/
+_outputs/
+Documents/
+*.html
