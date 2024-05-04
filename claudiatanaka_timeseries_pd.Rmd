@@ -1,0 +1,199 @@
+---
+title:  Projeto da disciplina - Séries Temporais
+author: Claudia Tanaka (claudia.tanaka@al.infnet.edu.br)
+date:   "Atualizado em `r format(Sys.time(), '%d/%m/%Y')`"
+
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+---
+
+*Desenvolvido em R versão 4.3.2 (2023-10-31 ucrt)*
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set( message=FALSE, warning=FALSE )
+options(scipen=999) # "Desliga" notação científica. 
+
+# PACOTES 
+library(tidyverse)
+
+# PRETTY DOC
+library(gt)
+library(patchwork)
+
+theme_set(theme_light())
+theme_update(
+  panel.grid.minor = element_blank(),
+  plot.title = element_text(size = 12, colour = "gray30", face = "bold"),
+  plot.subtitle = element_text(face = 'italic', colour = "gray50", size = 10),
+  plot.caption = element_text(colour = "gray50", hjust=0, size = 8),
+  legend.title = element_blank(),
+)
+```
+
+
+\
+
+# Introdução
+
+Nessa disciplina, aprofundamos nossos conhecimentos em séries temporais, tarefa que é extremamente importante para o dia-a-dia de um cientista de dados. Agora iremos validar nosso conhecimento. 
+
+Para a realização desse trabalho, será necessário utilizar a plataforma Knime e seus componentes para análise de séries temporais. Para tal, será necessário ter Python instalado em sua máquina e fazer a integração com a plataforma (sugestão: Anaconda)
+
+Escolha uma base de dados para realizar esse projeto. Essa base de dados será utilizada durante toda sua análise. Essa base necessita ter 2 (ou mais) variáveis de interesse. Fundamental que a ordem das entradas seja importante (uma das entradas é sequencial ou temporal). Caso você tenha dificuldade para escolher uma base, a professora da disciplina irá designar para você.
+
+\
+
+# P01 Knime/Python XXX
+
+\
+
+No relatório final, anexe um printscreen evidenciando que o Knime está funcionando com os componentes e integrado com Python
+
+\
+
+# P02 Base XXX
+
+\
+
+Explique a motivação de uso da base escolhida. Quais perguntas (problemas) são respondidos nessa base com o uso de séries temporais? Cite ao menos duas perguntas. 
+
+\
+
+# P03 Variáveis XXX
+
+\
+
+Descreva as variáveis presentes na base. Quais são as variáveis? Quais são os tipos de variáveis (discreta, categórica, contínua)? Quais são as médias e desvios padrões?
+
+\
+
+# P04 Conceitos XXX
+
+\
+
+Com suas palavras explique:\
+
+\
+
+**a. Processo estocástico**
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+\
+
+**b. Processo determinístico**
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+\
+
+
+**c. Sazonalidade estocástica**
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+\
+
+
+**d. Sazonalidade determinística**
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+\
+
+**e. Sazonalidade aditiva vs multiplicativa**
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+\
+
+# P05 Visualização XXX
+
+\
+
+Em relação à base escolhida:\
+
+\
+
+## Variáveis
+
+a. Faça gráficos onde cada variável não sequencial é usada no eixo-Y e a sequencial é o eixo-X
+
+
+```{r}
+
+```
+
+\
+
+## ACF plot
+
+b. Faça um gráfico de autocorrelação para cada uma das variáveis (ACF Plot)
+
+```{r}
+
+```
+
+
+\
+
+## PACF plot
+
+
+c. Faça um gráfico de correlação parcial para cada uma das variáveis (PACF Plot)
+
+```{r}
+
+```
+
+
+
+
+
+\
+
+# P06 Decomposição XXX
+
+\
+
+Decomponha as variáveis em: Tendência, Sazonalidade e Resíduo. Faça um gráfico
+
+\
+
+```{r}
+
+```
+
+
+\
+
+# P07 ARIMA XXX
+
+\
+
+Construa um modelo ARIMA para cada variável da base de dados e faça uma previsão (forecast) baseado nele. Use "Akaike Information Critera" para definir o melhor modelo ARIMA possível. Análise o resíduo do modelo de predição, com o número correto de graus de liberdade. (use os componentes ARIMA Predictor, ARIMA Learner e Analyze ARIMA Residuals)
+
+
+```{r}
+
+```
+
+
+\
+
+# FIM
+
+\
+
+*Antes de fazer sua entrega, reúna todos os arquivos relativos ao seu Projeto de Disciplina em um único arquivo no formato .zip e poste no Moodle. Utilize o seu nome para nomear o arquivo, identificando também a disciplina, como no exemplo: “nomedoaluno_nomedadisciplina_pd.zip”.*
+
+\
+
+# Referências bibliográficas
+
+\
+
+Hyndman, R.J., & Athanasopoulos, G. (2021) *Forecasting: principles and practice*, 3rd edition, OTexts: Melbourne, Australia. [https://otexts.com/fpp3/]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
