@@ -16,9 +16,6 @@ output:
 knitr::opts_chunk$set( message=FALSE, warning=FALSE )
 options(scipen=999) # "Desliga" notação científica. 
 
-# PACOTES 
-library(tidyverse)
-
 # PRETTY DOC
 library(gt)
 library(patchwork)
@@ -44,13 +41,24 @@ Para a realização desse trabalho, será necessário utilizar a plataforma Knim
 
 Escolha uma base de dados para realizar esse projeto. Essa base de dados será utilizada durante toda sua análise. Essa base necessita ter 2 (ou mais) variáveis de interesse. Fundamental que a ordem das entradas seja importante (uma das entradas é sequencial ou temporal). Caso você tenha dificuldade para escolher uma base, a professora da disciplina irá designar para você.
 
+
+```{r}
+# Pacotes R utilizados nesse projeto
+library(fpp3)
+
+```
+
 \
 
-# P01 Knime/Python XXX
+# P01 Knime/Python
 
 \
 
-No relatório final, anexe um printscreen evidenciando que o Knime está funcionando com os componentes e integrado com Python
+**No relatório final, anexe um printscreen evidenciando que o Knime está funcionando com os componentes e integrado com Python**
+
+\
+
+![](.imgs/knime1.png)
 
 \
 
@@ -58,7 +66,7 @@ No relatório final, anexe um printscreen evidenciando que o Knime está funcion
 
 \
 
-Explique a motivação de uso da base escolhida. Quais perguntas (problemas) são respondidos nessa base com o uso de séries temporais? Cite ao menos duas perguntas. 
+**Explique a motivação de uso da base escolhida. Quais perguntas (problemas) são respondidos nessa base com o uso de séries temporais? Cite ao menos duas perguntas.**
 
 \
 
@@ -66,47 +74,66 @@ Explique a motivação de uso da base escolhida. Quais perguntas (problemas) sã
 
 \
 
-Descreva as variáveis presentes na base. Quais são as variáveis? Quais são os tipos de variáveis (discreta, categórica, contínua)? Quais são as médias e desvios padrões?
+**Descreva as variáveis presentes na base. Quais são as variáveis? Quais são os tipos de variáveis (discreta, categórica, contínua)? Quais são as médias e desvios padrões?**
 
 \
 
-# P04 Conceitos XXX
+# P04 Conceitos
 
 \
 
-Com suas palavras explique:\
+**Com suas palavras explique:**\
 
 \
 
 **a. Processo estocástico**
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+De acordo com Na teoria da probabilidade, um processo estocástico ou aleatório é um objeto matemático geralmente definido como uma sequência de variáveis aleatórias em um espaço de probabilidade, onde o índice ou eixo da sequência geralmente é interpretado como uma medida de tempo. Processos estocásticos são amplamente utilizados como modelos matemáticos de sistemas e fenômenos que parecem variar de maneira aleatória. Exemplos incluem o crescimento de uma população bacteriana, uma corrente elétrica flutuando devido a ruído térmico ou o movimento de uma molécula de gás. (Parzen 2015)
 
 \
 
 **b. Processo determinístico**
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+"Determinístico" refere-se a um sistema ou processo totalmente previsível e que segue um conjunto de regras ou leis. Assim sendo, dado um certo ponto de partida conhecido (input), um sistema determinístico produzirá sempre o mesmo resultado. Isso ocorre porque o comportamento de um sistema determinístico é inteiramente determinado por suas entradas (inputs) e pelas regras que governam sua operação. Não há nenhum elemento de acaso ou aleatoriedade envolvido em um sistema determinístico.
+
+Em outras palavras, se as condições iniciais e as regras que regem o processo determinístico forem conhecidas, será possível prever com certeza qual será o resultado. 
+
 
 \
 
 
 **c. Sazonalidade estocástica**
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-\
-
-
 **d. Sazonalidade determinística**
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+Sazonalidade em uma série temporal refere-se a movimentos sistemáticos de uma variável observada ao longo do tempo que se repetem durante um determinado período com intensidade semelhante. Um padrão sazonal ocorre quando uma série temporal é afetada por fatores sazonais, como a época do ano, o dia da semana ou a hora do dia. 
+
+A sazonalidade pode ser classificada em dois tipos: sazonalidade determinística e sazonalidade estocástica.
+
+As séries temporais com sazonalidade determinística apresentam um padrão sazonal constante que sempre se repete de forma previsível, tanto em intensidade (o nível do padrão sazonal permanece o mesmo durante o mesmo período sazonal) quanto em periodicidade (a localização dos picos e vales não muda, isto é, o tempo entre cada repetição do padrão sazonal é constante). (Cerqueira, 2023)
+
+Por outro lado, as séries temporais com sazonalidade estocástica apresentam um padrão sazonal que varia de forma aleatória, tanto em intensidade quanto em periodicidade. Isso significa que o padrão sazonal pode mudar de intensidade ou de periodicidade de um período sazonal para o outro, tornando a previsão do padrão sazonal mais desafiadora.
+
 
 \
 
 **e. Sazonalidade aditiva vs multiplicativa**
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+A decomposição aditiva é uma técnica de análise de séries temporais que divide uma série temporal em três componentes: tendência, sazonalidade e ruído. A decomposição aditiva é aplicável quando a magnitude das flutuações sazonais, ou a variação em torno do ciclo de tendência, não varia com o nível da série temporal. (Hyndman & Athanasopoulos, 2021)
+
+A decomposição aditiva é expressa pela seguinte equação:
+
+$$
+Y_t = Tendência_t + Sazonalidade_t + Ruído_t
+$$
+
+Quando a variação no padrão sazonal, ou a variação em torno do ciclo de tendência, apresentam um comportamento estocástico que parece ser proporcional ao nível da série temporal, então uma decomposição multiplicativa é mais apropriada. (Hyndman & Athanasopoulos, 2021)
+
+A decomposição multiplicativa é expressa pela seguinte equação:
+
+$$
+Y_t = Tendência_t \times Sazonalidade_t \times Ruído_t
+$$
 
 \
 
@@ -114,13 +141,13 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 \
 
-Em relação à base escolhida:\
+**Em relação à base escolhida:**\
 
 \
 
 ## Variáveis
 
-a. Faça gráficos onde cada variável não sequencial é usada no eixo-Y e a sequencial é o eixo-X
+**a. Faça gráficos onde cada variável não sequencial é usada no eixo-Y e a sequencial é o eixo-X**
 
 
 ```{r}
@@ -131,7 +158,7 @@ a. Faça gráficos onde cada variável não sequencial é usada no eixo-Y e a se
 
 ## ACF plot
 
-b. Faça um gráfico de autocorrelação para cada uma das variáveis (ACF Plot)
+**b. Faça um gráfico de autocorrelação para cada uma das variáveis (ACF Plot)**
 
 ```{r}
 
@@ -143,7 +170,7 @@ b. Faça um gráfico de autocorrelação para cada uma das variáveis (ACF Plot)
 ## PACF plot
 
 
-c. Faça um gráfico de correlação parcial para cada uma das variáveis (PACF Plot)
+**c. Faça um gráfico de correlação parcial para cada uma das variáveis (PACF Plot)**
 
 ```{r}
 
@@ -159,7 +186,7 @@ c. Faça um gráfico de correlação parcial para cada uma das variáveis (PACF 
 
 \
 
-Decomponha as variáveis em: Tendência, Sazonalidade e Resíduo. Faça um gráfico
+**Decomponha as variáveis em: Tendência, Sazonalidade e Resíduo. Faça um gráfico**
 
 \
 
@@ -174,7 +201,7 @@ Decomponha as variáveis em: Tendência, Sazonalidade e Resíduo. Faça um gráf
 
 \
 
-Construa um modelo ARIMA para cada variável da base de dados e faça uma previsão (forecast) baseado nele. Use "Akaike Information Critera" para definir o melhor modelo ARIMA possível. Análise o resíduo do modelo de predição, com o número correto de graus de liberdade. (use os componentes ARIMA Predictor, ARIMA Learner e Analyze ARIMA Residuals)
+**Construa um modelo ARIMA para cada variável da base de dados e faça uma previsão (forecast) baseado nele. Use "Akaike Information Critera" para definir o melhor modelo ARIMA possível. Análise o resíduo do modelo de predição, com o número correto de graus de liberdade. (use os componentes ARIMA Predictor, ARIMA Learner e Analyze ARIMA Residuals)**
 
 
 ```{r}
@@ -196,4 +223,10 @@ Construa um modelo ARIMA para cada variável da base de dados e faça uma previs
 
 \
 
-Hyndman, R.J., & Athanasopoulos, G. (2021) *Forecasting: principles and practice*, 3rd edition, OTexts: Melbourne, Australia. [https://otexts.com/fpp3/]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
+Cerqueira, V. (2023) *3 Types of Seasonality and How to Detect Them*. Disponível em: [https://towardsdatascience.com/3-types-of-seasonality-and-how-to-detect-them-7c9beedf2f8e]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
+
+
+Hyndman, R.J., & Athanasopoulos, G. (2021) *Forecasting: principles and practice, 3rd edition*. OTexts: Melbourne, Australia. [https://otexts.com/fpp3/]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
+
+
+Parzen, E. (2015). *Stochastic Processes*. Courier Dover Publications. pp. 7, 8. 336p. ISBN 978-0-486-79688-8.
