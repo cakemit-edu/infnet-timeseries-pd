@@ -19,10 +19,12 @@ options(scipen=999) # "Desliga" notação científica.
 # PRETTY DOC
 library(gt)
 library(patchwork)
+library(fpp3)
 
 theme_set(theme_light())
 theme_update(
   panel.grid.minor = element_blank(),
+  panel.grid.major = element_line(colour = "gray95"),
   plot.title = element_text(size = 12, colour = "gray30", face = "bold"),
   plot.subtitle = element_text(face = 'italic', colour = "gray50", size = 10),
   plot.caption = element_text(colour = "gray50", hjust=0, size = 8),
@@ -62,19 +64,71 @@ library(fpp3)
 
 \
 
-# P02 Base XXX
+# P02 Base
 
 \
 
 **Explique a motivação de uso da base escolhida. Quais perguntas (problemas) são respondidos nessa base com o uso de séries temporais? Cite ao menos duas perguntas.**
 
+Esse projeto estuda a evolução do volume de produção trimestral de alguns setores da economia brasileira, segundo divulgado pelo IBGE. 
+
+Há diferenças nos padrões de tendência entre o PIB dos setores da economia? Quais setores apresentam maior sazonalidade? Qual a relação entre o PIB de um setor com o PIB de outro setor? Essas são algumas perguntas que podem ser respondidas com o uso de séries temporais.
+
 \
 
-# P03 Variáveis XXX
+# P03 Variáveis
 
 \
 
 **Descreva as variáveis presentes na base. Quais são as variáveis? Quais são os tipos de variáveis (discreta, categórica, contínua)? Quais são as médias e desvios padrões?**
+
+\
+
+Os dados informados são uma série temporal encadeada do índice de volume de produção trimestral em cada setor da economia, indexado à base $100 = média trimestral do ano de 1995$, disponibilizados pelo IBGE em  [https://sidra.ibge.gov.br/home/cnt/brasil]. 
+
+Os três setores da economia são [Indústria]{.underline}, [Serviços]{.underline} e [Agropecuária]{.underline}, identificados pela variável categórica `name`.
+
+O volume de produção trimestral é uma variável numérica contínua e está identificado na base pelo campo `value`.
+
+O campo de data `Trimestre` é uma variável sequencial, que representa o trimestre de cada observação.
+
+\
+
+A base contém 112 observações para cada setor da economia, que correspondem aos 112 trimestres entre 1ºT de 1996 e 4ºT 2023, totalizando 336 observações. Não há lacunas nessas três séries temporais. 
+
+
+```{r}
+(ts1 <- readr::read_delim("_datasets/tabela1620.csv", delim=",", show_col_types=F, skip=4) |> 
+  # Limpa e formata os dados
+  filter(!is.na(`Comércio`)) |> 
+  mutate(across(2:23, as.numeric)) |> 
+  
+  pivot_longer(2:23, names_to="name", values_to="value") |> # Coloca as séries empilhadas
+  mutate(name = stringr::str_remove(name, " - total")) |>
+  
+  # Formata o campo "Trimestre"
+  mutate(n.trim = as.numeric(stringr::str_sub(Trimestre,1,1)),
+         ano = as.integer(paste0(stringr::str_sub(Trimestre,-4,-1)))) |> 
+  mutate(Trimestre = make_yearquarter(ano, n.trim)) |> 
+  
+  # Finaliza a tabela
+  select(Trimestre, name, value) |> 
+  filter(name %in% c("Indústria", "Serviços", "Agropecuária")) |> 
+  arrange(name, Trimestre) |> 
+  
+  # Transforma em um objeto série temporal
+  as_tsibble(index=Trimestre, key=name))
+```
+
+
+\
+
+A seguir um resumo estatístico da série temporal:
+
+```{r}
+summarytools::descr(ts1 |> group_by(name))
+```
+
 
 \
 
@@ -88,7 +142,7 @@ library(fpp3)
 
 **a. Processo estocástico**
 
-De acordo com Na teoria da probabilidade, um processo estocástico ou aleatório é um objeto matemático geralmente definido como uma sequência de variáveis aleatórias em um espaço de probabilidade, onde o índice ou eixo da sequência geralmente é interpretado como uma medida de tempo. Processos estocásticos são amplamente utilizados como modelos matemáticos de sistemas e fenômenos que parecem variar de maneira aleatória. Exemplos incluem o crescimento de uma população bacteriana, uma corrente elétrica flutuando devido a ruído térmico ou o movimento de uma molécula de gás. (Parzen 2015)
+Na teoria da probabilidade, um processo estocástico ou aleatório é um objeto matemático geralmente definido como uma sequência de variáveis aleatórias em um espaço de probabilidade, onde o índice ou eixo da sequência é interpretado como uma medida de tempo. Processos estocásticos são amplamente utilizados como modelos matemáticos de sistemas e fenômenos que parecem variar de maneira aleatória. Exemplos incluem o crescimento de uma população bacteriana, uma corrente elétrica flutuando devido a ruído térmico ou o movimento de uma molécula de gás. (Parzen 2015)
 
 \
 
@@ -135,9 +189,11 @@ $$
 Y_t = Tendência_t \times Sazonalidade_t \times Ruído_t
 $$
 
+
+
 \
 
-# P05 Visualização XXX
+# P05 Visualização
 
 \
 
@@ -150,30 +206,55 @@ $$
 **a. Faça gráficos onde cada variável não sequencial é usada no eixo-Y e a sequencial é o eixo-X**
 
 
-```{r}
-
+```{r fig.asp=.5}
+ts1 |> 
+  autoplot(value, linewidth=.75) +
+  scale_y_continuous(labels=scales::label_number()) +
+  labs(y="Volume de produção (ín", title="Índice de produção trimestral por setor da economia")
 ```
 
 \
 
-## ACF plot
+## Autocorrelações
 
 **b. Faça um gráfico de autocorrelação para cada uma das variáveis (ACF Plot)**
+**c. Faça um gráfico de correlação parcial para cada uma das variáveis (PACF Plot)**
+
+Agropecuária parece ter um forte componente sazonal e a amplitude da sazonalidade vem aumentando ao longo dos anos. Nota-se no gráfico ACF que a autocorrelação é significativa a cada 4 trimestres, o que sugere um padrão sazonal com período de 4 trimestres (sazonalidade anual). O gráfico PACF mostra que a autocorrelação anual é forte apenas no quarto lag, após retirar-se o efeito das autocorrelações dos outros lags. 
+
+O setor agropecuário também tem uma autocorrelação significativa no primeiro lag, o que sugere que o volume de produção de um trimestre ajuda a explicar ou projetar o volume do trimestre seguinte.
 
 ```{r}
-
+ts1 |> filter(name=="Agropecuária") |> 
+  gg_tsdisplay(value, plot_type = "partial") +
+  labs(title = "Índice de produção trimestral, Agropecuária", subtitle = "Gráficos de autocorrelação")
 ```
 
 
 \
 
-## PACF plot
-
-
-**c. Faça um gráfico de correlação parcial para cada uma das variáveis (PACF Plot)**
 
 ```{r}
+ts1 |> filter(name=="Serviços") |> 
+  gg_tsdisplay(value, plot_type = "partial") +
+  labs(title = "Índice de produção trimestral, Serviços", subtitle = "Gráficos de autocorrelação")
+```
 
+\
+
+
+```{r}
+ts1 |> filter(name=="Indústria") |> 
+  gg_tsdisplay(value, plot_type = "partial") +
+  labs(title = "Índice de produção trimestral, Indústria", subtitle = "Gráficos de autocorrelação")
+```
+
+\
+
+Visualmente, fica claro que as séries não são estacionárias. Podemos confirmar isso com testes estatísticos de raíz unitária:
+
+```{r}
+ts1 |> features(value, features = feature_set(tags = "unitroot"))
 ```
 
 
@@ -191,7 +272,42 @@ $$
 \
 
 ```{r}
+(ts1.dcmp <- ts1 |> 
+   model(STL = STL(value)) |> 
+   components())
+```
 
+
+```{r fig.asp=1}
+ts1.dcmp |> autoplot() +
+  theme(legend.position="top") +
+  labs(title="Decomposição STL da série de produção por trimestre")
+```
+
+
+```{r fig.asp=1}
+ts1.dcmp |> filter(name != "Agropecuária") |>
+  autoplot() +
+  theme(legend.position="top") +
+  labs(title="Decomposição STL da série de produção por trimestre")
+```
+
+\
+
+```{r}
+ts1.dcmp |> 
+  features(value, features = feature_set(tags = c("trend", "seasonal", "remainder"))) |> 
+  select(name, trend_strength, seasonal_strength_year, nsdiffs) |>
+  gt(rowname_col="stub", locale="pt") |> sub_missing() |>
+  tab_options(
+    heading.align="left", heading.title.font.size=pct(110), heading.subtitle.font.size=pct(90),
+    column_labels.font.weight="bold", column_labels.font.size=pct(80),
+    column_labels.text_transform="uppercase", column_labels.background.color="gray95",
+    data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
+    table.font.size=pct(90), source_notes.font.size = pct(70),
+    grand_summary_row.padding=px(2), grand_summary_row.background.color="gray95"
+  ) |> 
+  tab_header(title = md("**titulo**"))
 ```
 
 
@@ -204,10 +320,213 @@ $$
 **Construa um modelo ARIMA para cada variável da base de dados e faça uma previsão (forecast) baseado nele. Use "Akaike Information Critera" para definir o melhor modelo ARIMA possível. Análise o resíduo do modelo de predição, com o número correto de graus de liberdade. (use os componentes ARIMA Predictor, ARIMA Learner e Analyze ARIMA Residuals)**
 
 
-```{r}
+\
 
+## Agropecuária
+
+Separa datasets de treino e teste
+
+```{r}
+ts1.train <- ts1 |> filter(year(Trimestre)<=2019 & name=="Agropecuária")
+ts1.test <- ts1 |> filter(name=="Agropecuária")
 ```
 
+
+\
+
+
+### 1. Modelagem
+
+
+Tenta identificar por tentativa e erro o melhor modelo ARIMA usando a função `auto.arima` do pacote `forecast`.
+
+```{r}
+ts1.train |> model(AUTOARIMA = ARIMA(value)) |> report()
+```
+
+
+*Interpretando o modelo resultante:* $ARIMA(0,1,0)$.
+
+Isso significa que o modelo tem:
+
+-   $1$ para o componente de Integração, que significa que foi necessária uma diferenciação para tornar a série estacionária;
+
+-   um componente AR de ordem $0$, indicando que o modelo não usa os trimestres anteriores para fazer previsões futuras;
+
+-   um componente de média móvel de ordem $0$, indicando que o modelo não usa o resíduo do "fit" de trimestres anteriores para fazer previsões futuras;
+
+-   A função `autoarima` não considerou componente sazonal.
+
+\
+
+*Coeficientes:*
+
+Não há coeficientes para os componentes de autoregressão (AR) ou médias móveis (MA), já que estes componentes não estão presentes. Porém, o modelo estimou uma constante (*drift*) de $0,8171$ com desvio padrão de $0,4115$. Esse desvio padrão é quase metade do valor estimado para a constante, o que indica que essa estimativa não está muito precisa.
+
+\
+
+*Medidas de qualidade do modelo:*
+
+`sigma^2` ou $\sigma^2$ é estimado em $15,58$, que é a variância estimada dos resíduos (erros) do modelo nos dados de treino. 
+
+O *log likelihood*, ou log de probabilidade do modelo, tem o valor $-253,56$. Esse indicador mede quão bem o modelo se ajusta aos dados. Em geral, quanto maior o log de probabilidade (mais próximo de 0 ou positivo), melhor o modelo se ajusta aos dados (Diachkov 2023).
+
+\
+
+*Critérios de comparação entre modelos:*
+
+-   AIC: Critério de Informação de Akaike, com valor de $5.037,42$. Quanto menor o AIC, melhor o modelo.
+
+-   AICC: AIC corrigido para o tamanho da amostra, com valor de $5.037,49$. Semelhante ao AIC, ajusta o critério para o número de observações.
+
+-   BIC: Critério de Informação Bayesiano, com valor de $5.054,49$. Assim como o AIC, é utilizado para comparação de modelos, mas penaliza pela quantidade de parâmetros utilizados, favorecendo modelos mais simples.
+
+Critérios de informação como AIC (Akaike Information Criterion) e BIC (Bayesian Information Criterion) são medidas relativas usadas para comparar o desempenho de vários modelos estatísticos entre si. Não existem valores de referência absolutos para AIC ou BIC que indiquem um bom modelo. Em vez disso, estes critérios são utilizados num sentido comparativo; entre um conjunto de modelos, geralmente deve-se favorecer o modelo com o AIC ou BIC mais baixo.
+
+
+\
+
+### 2. Compara modelos
+
+
+Constrói vários modelos para comparação entre si, tentando melhorar a qualidade do modelo.
+
+```{r warning=FALSE}
+fit.ts1 <- ts1.train |> filter(name=="Agropecuária") |>
+  model(
+    `Seasonal naive` = SNAIVE(value),
+    `Média móvel` = MEAN(value),
+    AUTOARIMA = ARIMA(value),
+    # # Introduz sazonalidade no modelo:
+    # SARIMA_000010 = ARIMA(value ~ pdq(0,0,0) + PDQ(0,1,0,4)), # 1 diferenciação sazonal
+    # SARIMA_000110 = ARIMA(value ~ pdq(0,0,0) + PDQ(1,1,0,4)), # diferenciação com AR sazonal
+    # SARIMA_100110 = ARIMA(value ~ pdq(0,0,0) + PDQ(1,1,1,4)), # diferenciação com AR e MA sazonal
+  )
+
+report(fit.ts1) |> select(.model:BIC)
+```
+
+
+\
+
+```{r}
+ts1.fcst <- fit.ts1 |> forecast(h=16) |> 
+  mutate(.model = factor(.model, 
+                         levels=c("AUTOARIMA", "Seasonal naive", "Média móvel")))
+
+ts1.fcst |> 
+  autoplot(ts1, level=NULL, linewidth=.8, alpha=.5) +
+  scale_x_yearquarter(expand=expansion(mult=c(.01,.01))) +
+  scale_color_brewer(palette="Dark2", direction=-1) +
+  labs(title="Previsão de XXXXXX", y="XXXXXXX", x=NULL)
+```
+
+
+\
+
+Visualmente é possível perceber que os modelos mais adequados são os SARIMA. Pela análise das medidas de acurácia, independente da medida de acurácia calculada sobre os resíduos das previsões na base de teste.
+
+```{r}
+accuracy(ts1.fcst, ts1.test) |> select(-.type) |>
+  arrange(RMSE) |> 
+  gt(rowname_col="stub", locale="pt") |> sub_missing() |>
+  fmt_number(c(ME:ACF1), decimals=4) |> 
+  tab_options(
+    heading.align="left", heading.title.font.size=pct(110), heading.subtitle.font.size=pct(90),
+    column_labels.font.weight="bold", column_labels.font.size=pct(80),
+    column_labels.text_transform="uppercase", column_labels.background.color="gray95",
+    data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
+    table.font.size=pct(90), source_notes.font.size = pct(70),
+  ) |> 
+  tab_header(title = md("**Análise de medidas de acurácia sobre os resíduos de previsão**"))
+```
+
+\
+
+Medidas de acurácia na mesma escala dos dados originais:
+
+-   [Mean error (ME):]{.underline} A média dos erros de previsão. Expresso na mesma escala dos dados.\
+
+-   [Root mean squared error (RMSE):]{.underline} A raiz quadrada da média dos erros de previsão ao quadrado. Expresso na mesma escala dos dados.\
+
+-   [Mean absolute error (MAE):]{.underline} A média dos valores absolutos dos erros de previsão. Expresso na mesma escala dos dados.\
+
+\
+
+Medidas de acurácia independentes da escala dos dados originais:
+
+-   [Mean percentage error (MPE):]{.underline} A média dos erros de previsão como uma porcentagem dos valores observados. Independe da escala dos dados.\
+
+-   [Mean absolute percentage error (MAPE):]{.underline} A média dos valores absolutos dos erros de previsão como uma porcentagem dos valores observados. Independe da escala dos dados.\
+
+\
+
+Medidas de acurácia indepdendentes da escala dos dados originais e que permitem comparações entre modelos distintos:
+
+-   [Mean absolute scaled error (MASE):]{.underline} A média dos valores absolutos dos erros de previsão (MAE) dividida pela média dos valores absolutos dos erros de previsão de um modelo de referência (no caso, naive forecast model). Um MASE menor que 1 indica que o modelo é melhor do que o modelo de referência.\
+
+-   [Root mean squared scaled error (RMSSE):]{.underline} A raiz quadrada da média dos erros de previsão ao quadrado (RMSE) dividida pelo RMSE de um modelo de referência (no caso, naive forecast model). Um RMSSE menor que 1 indica que o modelo é melhor do que o modelo de referência.\
+
+\
+
+TALVEZ TIRAR ISSO AQUI!
+
+-   [Autocorrelation of errors at lag 1 (ACF1):]{.underline} A autocorrelação dos erros de previsão no lag 1. Se a autocorrelação dos erros de previsão é significativamente diferente de zero, isso sugere que o modelo poderia ser melhorado pela inclusão de um termo de autorregressão adicional.
+
+\
+
+Vamos analisar os resíduos do modelo selecionado para assegurar que:
+
+1. Os resíduos não estejam correlacionados entre si.
+2. Os resíduos tenham média zero.
+
+```{r}
+gg_tsresiduals(fit.ts1 |> select(AUTOARIMA))
+```
+
+
+# PAREI AQUI
+
+\
+
+### 4. Forecast
+
+```{r}
+sarima.fit <- ts1.train |> model(SARIMA = ARIMA(value ~ pdq(0,1,0) + PDQ(1,0,1,4)))
+report(sarima.fit)
+```
+
+
+```{r}
+ts1.fcst |> filter(.model=="AUTOARIMA") |> 
+  autoplot( ts1.test |> filter(year(Trimestre)>=2015) ) +
+  scale_x_yearquarter(expand=expansion(mult=c(.01,.01))) +
+  labs(title="Previsão de XXXXXX",
+       y="XXXXXXX", x=NULL)
+```
+
+
+
+```{r}
+accuracy(ts1.fcst |> filter(.model=="AUTOARIMA"), ts1.test)
+```
+
+
+
+
+
+
+
+### 5. Analisa resíduos de previsão
+
+
+\
+
+## Serviços
+
+\
+
+## Indústria
 
 \
 
@@ -226,7 +545,18 @@ $$
 Cerqueira, V. (2023) *3 Types of Seasonality and How to Detect Them*. Disponível em: [https://towardsdatascience.com/3-types-of-seasonality-and-how-to-detect-them-7c9beedf2f8e]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
 
 
-Hyndman, R.J., & Athanasopoulos, G. (2021) *Forecasting: principles and practice, 3rd edition*. OTexts: Melbourne, Australia. [https://otexts.com/fpp3/]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
+\
 
+Diachkov, D. 2023. *Time Series Analysis in R: ARIMA family*. Medium Article. Disponível em: [[https://medium.com/\@the_lord_of_the_R/time-series-analysis-in-r-arima-family-fd901f1412a8](https://medium.com/@the_lord_of_the_R/time-series-analysis-in-r-arima-family-fd901f1412a8){.uri}]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
+
+\
+
+Hyndman, R. J. & Athanasopoulos, G. 2021. [*Capítulo 9 - Arima models*](https://otexts.com/fpp3/arima.html) e [*Capítulo 5.8 - Evaluating point forecast accuracy*](https://otexts.com/fpp3/accuracy.html) de *Forecasting: principles and practice, 3rd edition*. OTexts: Melbourne, Australia. Disponível em: [<https://otexts.com/fpp3/>]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
+
+\
 
 Parzen, E. (2015). *Stochastic Processes*. Courier Dover Publications. pp. 7, 8. 336p. ISBN 978-0-486-79688-8.
+
+\
+
+Peixeiro, M. 2019. *The Complete Guide to Time Series Analysis and Forecasting*. Towards Data Science Article. Disponível em: [<https://medium.com/towards-data-science/the-complete-guide-to-time-series-analysis-and-forecasting-70d476bfe775>]. Acessado em `r format(Sys.time(), '%d/%m/%Y')`.
