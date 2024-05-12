@@ -8,6 +8,7 @@ output:
     toc: yes
     toc_depth: 4
     toc_float: yes
+    code_folding: hide
 ---
 
 *Desenvolvido em R versão 4.3.2 (2023-10-31 ucrt)*
@@ -25,10 +26,11 @@ theme_set(theme_light())
 theme_update(
   panel.grid.minor = element_blank(),
   panel.grid.major = element_line(colour = "gray95"),
-  plot.title = element_text(size = 12, colour = "gray30", face = "bold"),
+  plot.title = element_text(size = 10, colour = "gray30", face = "bold"),
   plot.subtitle = element_text(face = 'italic', colour = "gray50", size = 10),
   plot.caption = element_text(colour = "gray50", hjust=0, size = 8),
   legend.title = element_blank(),
+  axis.title = element_text(size = 8)
 )
 ```
 
@@ -88,7 +90,7 @@ Os dados informados são uma série temporal encadeada do índice de volume de p
 
 Os três setores da economia são [Indústria]{.underline}, [Serviços]{.underline} e [Agropecuária]{.underline}, identificados pela variável categórica `name`.
 
-O volume de produção trimestral é uma variável numérica contínua e está identificado na base pelo campo `value`.
+O volume de produção trimestral é uma variável numérica contínua e está identificado na base pelo campo `producao`.
 
 O campo de data `Trimestre` é uma variável sequencial, que representa o trimestre de cada observação.
 
@@ -103,7 +105,7 @@ A base contém 112 observações para cada setor da economia, que correspondem a
   filter(!is.na(`Comércio`)) |> 
   mutate(across(2:23, as.numeric)) |> 
   
-  pivot_longer(2:23, names_to="name", values_to="value") |> # Coloca as séries empilhadas
+  pivot_longer(2:23, names_to="name", values_to="producao") |> # Coloca as séries empilhadas
   mutate(name = stringr::str_remove(name, " - total")) |>
   
   # Formata o campo "Trimestre"
@@ -112,7 +114,7 @@ A base contém 112 observações para cada setor da economia, que correspondem a
   mutate(Trimestre = make_yearquarter(ano, n.trim)) |> 
   
   # Finaliza a tabela
-  select(Trimestre, name, value) |> 
+  select(Trimestre, name, producao) |> 
   filter(name %in% c("Indústria", "Serviços", "Agropecuária")) |> 
   arrange(name, Trimestre) |> 
   
@@ -142,7 +144,7 @@ summarytools::descr(ts1 |> group_by(name))
 
 **a. Processo estocástico**
 
-Na teoria da probabilidade, um processo estocástico ou aleatório é um objeto matemático geralmente definido como uma sequência de variáveis aleatórias em um espaço de probabilidade, onde o índice ou eixo da sequência é interpretado como uma medida de tempo. Processos estocásticos são amplamente utilizados como modelos matemáticos de sistemas e fenômenos que parecem variar de maneira aleatória. Exemplos incluem o crescimento de uma população bacteriana, uma corrente elétrica flutuando devido a ruído térmico ou o movimento de uma molécula de gás. (Parzen 2015)
+Na teoria da probabilidade, um processo estocástico ou aleatório é um objeto matemático geralmente definido como uma sequência de variáveis aleatórias em um espaço de probabilidade, onde o índice ou eixo da sequência é uma medida de tempo. Processos estocásticos são amplamente utilizados como modelos matemáticos de sistemas e fenômenos que parecem variar de maneira aleatória. Exemplos incluem o crescimento de uma população bacteriana, uma corrente elétrica flutuando devido a ruído térmico ou o movimento de uma molécula de gás. (Parzen 2015)
 
 \
 
@@ -208,9 +210,10 @@ $$
 
 ```{r fig.asp=.5}
 ts1 |> 
-  autoplot(value, linewidth=.75) +
+  autoplot(producao) +
   scale_y_continuous(labels=scales::label_number()) +
-  labs(y="Volume de produção (ín", title="Índice de produção trimestral por setor da economia")
+  scale_color_brewer(palette="Dark2") +
+  labs(y="Volume de produção (1995=100)", title="Índice de produção trimestral por setor da economia")
 ```
 
 \
@@ -226,7 +229,7 @@ O setor agropecuário também tem uma autocorrelação significativa no primeiro
 
 ```{r}
 ts1 |> filter(name=="Agropecuária") |> 
-  gg_tsdisplay(value, plot_type = "partial") +
+  gg_tsdisplay(producao, plot_type = "partial") +
   labs(title = "Índice de produção trimestral, Agropecuária", subtitle = "Gráficos de autocorrelação")
 ```
 
@@ -236,7 +239,7 @@ ts1 |> filter(name=="Agropecuária") |>
 
 ```{r}
 ts1 |> filter(name=="Serviços") |> 
-  gg_tsdisplay(value, plot_type = "partial") +
+  gg_tsdisplay(producao, plot_type = "partial") +
   labs(title = "Índice de produção trimestral, Serviços", subtitle = "Gráficos de autocorrelação")
 ```
 
@@ -245,7 +248,7 @@ ts1 |> filter(name=="Serviços") |>
 
 ```{r}
 ts1 |> filter(name=="Indústria") |> 
-  gg_tsdisplay(value, plot_type = "partial") +
+  gg_tsdisplay(producao, plot_type = "partial") +
   labs(title = "Índice de produção trimestral, Indústria", subtitle = "Gráficos de autocorrelação")
 ```
 
@@ -254,16 +257,20 @@ ts1 |> filter(name=="Indústria") |>
 Visualmente, fica claro que as séries não são estacionárias. Podemos confirmar isso com testes estatísticos de raíz unitária:
 
 ```{r}
-ts1 |> features(value, features = feature_set(tags = "unitroot"))
+ts1 |> features(producao, features = feature_set(tags = "unitroot"))
 ```
 
+KPSS:
 
+PP_stat:
+
+ndiffs e nsdiffs:
 
 
 
 \
 
-# P06 Decomposição XXX
+# P06 Decomposição
 
 \
 
@@ -271,49 +278,57 @@ ts1 |> features(value, features = feature_set(tags = "unitroot"))
 
 \
 
-```{r}
-(ts1.dcmp <- ts1 |> 
-   model(STL = STL(value)) |> 
-   components())
-```
+Nesse caso foi inicialmente aplicada uma decomposição aditiva nos dados. Na figura a seguir os três componentes - sazonalidade, tendência e resíduo - são mostrados separadamente nos três painéis inferiores. Na decomposição aditiva esses componentes podem ser somados para reconstruir os dados originais mostrados no primeiro painel. 
+
+As barras cinzas à esquerda de cada painel mostram as escalas relativas dos componentes. Cada barra cinza representa o mesmo comprimento, mas como os gráficos estão em escalas diferentes, as barras variam em tamanho. A grande barra cinza no painel de Tendência mostra que a variação neste componente é menor em comparação com a variação nos dados originais do primeiro painel. Se encolhermos os três painéis inferiores até que suas barras fiquem do mesmo tamanho que as do painel dos dados originais, todos os painéis estariam na mesma escala.
+
+O setor agropecuário segue a maior tendência de alta entre os três setores nas últimas quase três décadas. De fato, no setor industrial e de serviços a tendência de crescimento parece se estagnar a partir de 2014.
+
+Chama atenção também a similaridade visual entre o comportamento da sazonalidade e da tendência do setor industrial e de serviços e sua distinção em relação ao setor agropecuário. 
 
 
 ```{r fig.asp=1}
-ts1.dcmp |> autoplot() +
-  theme(legend.position="top") +
-  labs(title="Decomposição STL da série de produção por trimestre")
-```
-
-
-```{r fig.asp=1}
-ts1.dcmp |> filter(name != "Agropecuária") |>
+ts1 |> 
+  model(STL = STL(producao)) |> 
+  components() |> 
   autoplot() +
   theme(legend.position="top") +
-  labs(title="Decomposição STL da série de produção por trimestre")
-```
-
-\
-
-```{r}
-ts1.dcmp |> 
-  features(value, features = feature_set(tags = c("trend", "seasonal", "remainder"))) |> 
-  select(name, trend_strength, seasonal_strength_year, nsdiffs) |>
-  gt(rowname_col="stub", locale="pt") |> sub_missing() |>
-  tab_options(
-    heading.align="left", heading.title.font.size=pct(110), heading.subtitle.font.size=pct(90),
-    column_labels.font.weight="bold", column_labels.font.size=pct(80),
-    column_labels.text_transform="uppercase", column_labels.background.color="gray95",
-    data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
-    table.font.size=pct(90), source_notes.font.size = pct(70),
-    grand_summary_row.padding=px(2), grand_summary_row.background.color="gray95"
-  ) |> 
-  tab_header(title = md("**titulo**"))
+  scale_x_yearquarter(date_breaks="5 years") +
+  scale_color_brewer(palette="Dark2") +
+  labs(title="Decomposição aditiva da série de produção por trimestre")
 ```
 
 
+O componente sazonal também é mais forte no setor agropecuário com maior amplitude e com periodicidade bem marcada. Faz sentido, já que o setor agropecuário pode ser mais sensível a fatores sazonais, como a época de colheita ou condições climáticas.
+
+A amplitude da sazonalidade (a diferença entre picos e vales) no setor agropecuário tende a aumentar progressivamente. Isso também ocorre, porém em menor amplitude, nos setores industrial e de serviços. A seguir aplicamos uma decomposição multiplicativa, que é mais adequada quando a amplitude da sazonalidade aumenta ou diminui em linha com aumento ou diminuição no nível da série. 
+
+A decomposição multiplicativa deixa a sazonalidade mais estável e faz com que as componentes de tendência e sazonalidade expliquem uma parcela maior da variabilidade dos dados. Dessa forma, o resíduo fica com picos e vales menores (uma variância mais estável) do que na decomposição aditiva - especialmente comparado à escala do resíduo na decomposição aditiva. 
+
+A tendência continua a mostrar um crescimento quase linear no setor agropecuário e superior aos outros setores, mas parece surgir a ocorrência de dois vales em 2016 e 2022. Talvez seja o início de um comportamento cíclico com defasagem de 6 anos. Mudanças climáticas?
+
+Nos setores industrial e de serviços a tendência de crescimento sofre estagnação a partir de 2014, mas o segmento de serviços parece mostrar indícios de recuperação, enquanto a indústria segue estagnada.
+
+
+
+```{r fig.asp=1}
+ts1 |> 
+  model(dcmp = classical_decomposition(producao, type="multiplicative")) |> 
+  components() |> 
+  autoplot() +
+  theme(legend.position="top") +
+  scale_x_yearquarter(date_breaks="5 years") +
+  scale_color_brewer(palette="Dark2") +
+  labs(title="Decomposição multiplicativa da série de produção por trimestre")
+```
+
+
+
+
+
 \
 
-# P07 ARIMA XXX
+# P07 ARIMA
 
 \
 
@@ -341,96 +356,160 @@ ts1.test <- ts1 |> filter(name=="Agropecuária")
 Tenta identificar por tentativa e erro o melhor modelo ARIMA usando a função `auto.arima` do pacote `forecast`.
 
 ```{r}
-ts1.train |> model(AUTOARIMA = ARIMA(value)) |> report()
+ts1.train |> model(AUTOARIMA = ARIMA(producao, trace=T)) |> report()
 ```
 
 
-*Interpretando o modelo resultante:* $ARIMA(0,1,0)$.
+*Interpretando o modelo sugerido por autoarima $ARIMA(0,0,1)(0,1,1)_4$*:
 
-Isso significa que o modelo tem:
+$$
+y^\prime_t = 5,52 + 0,44 \cdot \varepsilon_{t-1} + 0,41 \cdot \varepsilon_{t-4} + \varepsilon_t
+$$
 
--   $1$ para o componente de Integração, que significa que foi necessária uma diferenciação para tornar a série estacionária;
+Isso significa que o modelo sugerido tem:
 
--   um componente AR de ordem $0$, indicando que o modelo não usa os trimestres anteriores para fazer previsões futuras;
+-   um componente de média móvel (MA) de ordem $q=1$, indicando que o modelo considera o resíduo do "fit" do trimestre imediatamente anterior com coeficiente estimado $ma_1 = 0,44$ e desvio padrão $0,1074$;
 
--   um componente de média móvel de ordem $0$, indicando que o modelo não usa o resíduo do "fit" de trimestres anteriores para fazer previsões futuras;
+-   uma diferenciação de ordem $D=1$ da sazonalidade anual $s=4$, indicando aplicação de diferenciação do trimestre com o mesmo trimestre do ano anterior;
 
--   A função `autoarima` não considerou componente sazonal.
+-   um componente de sazonalidade de ordem $P=0$ e $Q=1$, indicando que o modelo sugerido não faz autoregressão sazonal, mas considera o resíduo do "fit" do mesmo trimestre do ano anterior com coeficiente estimado $SMA_1 = 0,4064$ e desvio padrão $0,0875$.
 
-\
+-   O modelo estimou uma constante (*drift*) de $5,5155$ com desvio padrão de $0,8133$. O valor positivo da constante indica que o modelo permite que as projeções de valores futuros aumentem ao longo do tempo.
 
-*Coeficientes:*
+Nota: Esses desvios padrão me parecem relativamente baixos, o que poderia indicar certa precisão nas estimativas dos coeficientes.
 
-Não há coeficientes para os componentes de autoregressão (AR) ou médias móveis (MA), já que estes componentes não estão presentes. Porém, o modelo estimou uma constante (*drift*) de $0,8171$ com desvio padrão de $0,4115$. Esse desvio padrão é quase metade do valor estimado para a constante, o que indica que essa estimativa não está muito precisa.
 
-\
+O modelo sugerido não tem:
 
-*Medidas de qualidade do modelo:*
+-   Componente Integração (I) $d=0$, que significa que não foi aplicada diferenciação com os trimestres imediatamente anteriores para tornar a série estacionária;
 
-`sigma^2` ou $\sigma^2$ é estimado em $15,58$, que é a variância estimada dos resíduos (erros) do modelo nos dados de treino. 
+-   Componente Autocorrelação (AR) $p=0$, indicando que o modelo não usa os trimestres imediatamente anteriores para fazer previsões futuras;
 
-O *log likelihood*, ou log de probabilidade do modelo, tem o valor $-253,56$. Esse indicador mede quão bem o modelo se ajusta aos dados. Em geral, quanto maior o log de probabilidade (mais próximo de 0 ou positivo), melhor o modelo se ajusta aos dados (Diachkov 2023).
 
 \
 
 *Critérios de comparação entre modelos:*
 
--   AIC: Critério de Informação de Akaike, com valor de $5.037,42$. Quanto menor o AIC, melhor o modelo.
+Critérios de informação como AIC e BIC são medidas relativas usadas para comparar o desempenho de vários modelos estatísticos entre si. Não existem valores de referência absolutos para AIC ou BIC que indiquem um bom modelo. Em vez disso, estes critérios são utilizados num sentido comparativo; entre um conjunto de modelos, geralmente deve-se favorecer o modelo com o AIC ou BIC mais baixo.
 
--   AICC: AIC corrigido para o tamanho da amostra, com valor de $5.037,49$. Semelhante ao AIC, ajusta o critério para o número de observações.
 
--   BIC: Critério de Informação Bayesiano, com valor de $5.054,49$. Assim como o AIC, é utilizado para comparação de modelos, mas penaliza pela quantidade de parâmetros utilizados, favorecendo modelos mais simples.
+-   Critério de Informação de Akaike ou *Akaike Information Criterion* (AIC) de $671,81$. Esse coeficiente penaliza a medida de ajuste do modelo com a quantidade de parâmetros que precisam ser estimados. Quanto mais parâmetros, maior o AIC. Quanto menor o AIC, melhor o modelo. 
 
-Critérios de informação como AIC (Akaike Information Criterion) e BIC (Bayesian Information Criterion) são medidas relativas usadas para comparar o desempenho de vários modelos estatísticos entre si. Não existem valores de referência absolutos para AIC ou BIC que indiquem um bom modelo. Em vez disso, estes critérios são utilizados num sentido comparativo; entre um conjunto de modelos, geralmente deve-se favorecer o modelo com o AIC ou BIC mais baixo.
+-   AICC é o AIC corrigido para o tamanho da amostra, com valor de $672,27$. Semelhante ao AIC, ajusta o critério para o número de observações e é especialmente útil quando há poucas observações.
 
+-   Critério de Informação Bayesiano ou *Bayesian Information Criterion* (BIC), com valor de $681,9$, penaliza pela quantidade de parâmetros utilizados, favorecendo modelos mais simples. O modelo escolhido pelo BIC é geralmente o mesmo escolhido pelo AIC ou um com menos termos. Isso ocorre porque o BIC penaliza mais fortemente o número de parâmetros do que o AIC.
+
+
+Então vamos testar alguns modelos e compará-los com o modelo sugerido pelo `auto.arima`.
 
 \
 
-### 2. Compara modelos
+**Compara modelos:**
 
 
-Constrói vários modelos para comparação entre si, tentando melhorar a qualidade do modelo.
+Constrói vários modelos para comparação entre si, tentando encontrar o modelo mais simples (menor número de parâmetros) com o melhor fit (menor erro residual nos dados de treino). A quantidade de parâmetros de um modelo é um indicativo de sua complexidade. Modelos mais complexos podem ser mais flexíveis e se ajustar melhor aos dados de treino, mas podem ter um desempenho pior na previsão de dados futuros (overfitting). No caso dos modelos SARIMA a quantidade de parâmetros é dada por $p+q+P+Q$.
+ 
+
 
 ```{r warning=FALSE}
-fit.ts1 <- ts1.train |> filter(name=="Agropecuária") |>
+fit.agr <- ts1.train |> 
   model(
-    `Seasonal naive` = SNAIVE(value),
-    `Média móvel` = MEAN(value),
-    AUTOARIMA = ARIMA(value),
-    # # Introduz sazonalidade no modelo:
-    # SARIMA_000010 = ARIMA(value ~ pdq(0,0,0) + PDQ(0,1,0,4)), # 1 diferenciação sazonal
-    # SARIMA_000110 = ARIMA(value ~ pdq(0,0,0) + PDQ(1,1,0,4)), # diferenciação com AR sazonal
-    # SARIMA_100110 = ARIMA(value ~ pdq(0,0,0) + PDQ(1,1,1,4)), # diferenciação com AR e MA sazonal
+    autoARIMA = ARIMA(producao ~ pdq(0,0,1) + PDQ(0,1,1,4)), # Modelo autoarima
+    ARIMA_010.010 = ARIMA(producao ~ pdq(0,1,0) + PDQ(0,1,0,4)), # Random Walk (naive forecast)
+    ARIMA_000.010 = ARIMA(producao ~ pdq(0,0,0) + PDQ(0,1,0,4)), # só diferenciação sazonal
+    ARIMA_000.011 = ARIMA(producao ~ pdq(0,0,0) + PDQ(0,1,1,4)), # diferenciação com MA sazonal
+    ARIMA_000.110 = ARIMA(producao ~ pdq(0,0,0) + PDQ(1,1,0,4)), # diferenciação com AR sazonal
+    ARIMA_000.111 = ARIMA(producao ~ pdq(0,0,0) + PDQ(1,1,1,4)), # diferenciação com AR e MA sazonal
+    ARIMA_101.011 = ARIMA(producao ~ pdq(1,0,1) + PDQ(0,1,1,4)), # Modelo autoarima + AR1
   )
 
-report(fit.ts1) |> select(.model:BIC)
+fit.agr |> pivot_longer(!name, names_to="Modelo", values_to = "Parâmetros")
+
+glance(fit.agr) |> select(.model,AIC:BIC) |> arrange(AICc)
+```
+
+Mesmo com os ajustes, o modelo sugerido pelo `auto.arima` continua sendo o melhor modelo para a série temporal de produção do setor agropecuário. 
+
+\
+
+###3. Resíduos de previsão
+
+
+Vamos analisar os resíduos dos dados de treinamento do modelo selecionado para assegurar que:
+
+1. Os resíduos do modelo não estão correlacionados entre si. Se existirem correlações entre os resíduos, então sobrou informação nos resíduos que deveria ser utilizada no cálculo das previsões. 
+
+2. Os resíduos de inovação têm média zero. Se tiverem uma média diferente de zero, as previsões estão com viés. 
+
+Qualquer modelo de previsão que não satisfaça estas propriedades dos resíduos de treinamento pode ser melhorado. Verificar essas propriedades é importante para ver se um modelo está utilizando todas as informações disponíveis nos dados para fazer a previsão ou se os resíduos ainda contêm padrões que poderiam ser modelados. Isso não significa que os modelos que satisfaçam estas propriedades não possam ser melhorados, já que é possível ter vários métodos de previsão diferentes para o mesmo conjunto de dados, todos satisfazendo estas propriedades. Mas se alguma destas propriedades não for satisfeita, então o modelo de previsão pode ser modificado para gerar melhores previsões. (Hyndman & Athanasopoulos, 2021)
+
+Além destas duas propriedades essenciais, é útil (mas não necessário) que os resíduos também tenham as seguintes características:
+
+a. Os resíduos de inovação têm variância constante. Isso é conhecido como “homoscedasticidade”.
+
+b. Os resíduos de inovação são normalmente distribuídos.
+
+Essas características facilitam o cálculo dos intervalos de previsão. Se os resíduos não forem normalmente distribuídos, os intervalos de previsão não serão confiáveis. Se os resíduos não tiverem variância constante, então os intervalos de previsão serão muito amplos em alguns períodos e muito estreitos em outros. Às vezes, a aplicação de uma transformação pode ajudar com essas propriedades. Caso contrário, geralmente há pouco que se possa fazer para garantir que os resíduos de treinamento tenham variância constante e uma distribuição normal. Em vez disso, é necessária uma abordagem alternativa para obter intervalos de previsão.
+
+
+```{r}
+gg_tsresiduals(fit.agr |> select(autoARIMA))
+```
+
+Os resíduos do modelo sugerido pelo `auto.arima` parecem satisfazer as propriedades essenciais dos resíduos de treinamento. Não há correlação significativa entre os resíduos e a média dos resíduos é próxima de zero. O histograma dos resíduos parece se aproximar de uma normal. A variância dos resíduos parece aumentar nos períodos a partir de 2014 (isso coincide com os ciclos de "vales" observados na decomposição da tendência da série).
+
+
+Além de observar o gráfico ACF, também podemos fazer um teste mais formal de autocorrelação considerando todo um conjunto de autocorrelações como um grupo, em vez de olhar cada um separadamente. Quando olhamos para o gráfico ACF para ver se cada pico está dentro dos limites exigidos, estamos implicitamente realizando múltiplos testes de hipóteses, cada um com uma pequena probabilidade de dar um falso positivo. Quando um número suficiente destes testes for realizado, é provável que pelo menos um dê um falso positivo, e assim podemos concluir que os resíduos têm alguma autocorrelação remanescente, quando na verdade não têm.
+
+Então, é possível testar formalmente se as primeiras $ℓ$ autocorrelações são significativamente diferentes do que seria esperado de uma série estacionária. Um teste para um grupo de autocorrelações é chamado de teste *portmanteau*, de uma palavra francesa que descreve uma mala ou cabide carregando várias peças de roupa. Dois testes portmanteau bastante conhecidos são o Box-Pierce e o Ljung-Box. 
+
+Ambos usam um limite de lag máximo $ℓ$ e o número de observações $T$. Uma regra de bolso é usar $ℓ=10$ para dados não sazonais e $ℓ=2s$ para dados sazonais, onde s é o período de sazonalidade. No entanto, o teste não é bom quando $ℓ$ for grande, portanto, se esses valores forem maiores que $T/5$, usa-se $ℓ=T/5$. (Hyndman & Athanasopoulos, 2021)
+
+Grandes valores de Q∗ sugerem que as autocorrelações não provêm de uma série de ruído branco. Quão grande é muito grande? Se as autocorrelações viessem de uma série de ruído branco, então Q e Q∗ teriam uma distribuição χ2 com ℓ graus de liberdade.
+
+
+Com modelos ARIMA, testes de portmanteau mais precisos são obtidos se os graus de liberdade forem ajustados para levar em conta o número de parâmetros no modelo. Especificamente, usamos $ℓ−K$ graus de liberdade no teste, onde K é o número de parâmetros AR e MA no modelo. Portanto, para o modelo selecionado, $K=p+q+P+Q=0+1+0+1=2$. O valor de $K$ é passado para a função pelo argumento `dof` como pode-se ver a seguir:
+
+
+```{r}
+augment(fit.agr) |> filter(.model=="autoARIMA") |> features(.innov, ljung_box, lag=8, dof=2)
+
+augment(fit.agr) |> filter(.model=="autoARIMA") |> features(.innov, box_pierce, lag=8, dof=2)
+```
+
+
+Tanto para Ljung-Box quanto Box-Pierce, os resultados não são significativos (ou seja, os p-valores são bem superiores a $0,05$). Assim, podemos concluir que os resíduos não são distinguíveis de uma série estacionária (ruído branco). Isso confirma que o modelo ARIMA selecionado é adequado para a série temporal de produção do setor agropecuário.
+
+
+\
+
+### 4. Forecast
+
+Então vamos usá-lo para fazer a previsão e analisar seu desempenho contra os dados de teste.
+
+\
+
+```{r fig.asp=.5}
+fcst.agr <- fit.agr |> select(name, autoARIMA, ARIMA_010.010) |> 
+  forecast(h=16)
+
+fcst.agr |> 
+  autoplot(ts1.test |> filter(year(Trimestre)>=2015), level=NULL, linewidth=.8, alpha=.5) +
+  labs(title = "Previsão de produção trimestral, Agropecuária",
+       x = NULL)
 ```
 
 
 \
 
-```{r}
-ts1.fcst <- fit.ts1 |> forecast(h=16) |> 
-  mutate(.model = factor(.model, 
-                         levels=c("AUTOARIMA", "Seasonal naive", "Média móvel")))
 
-ts1.fcst |> 
-  autoplot(ts1, level=NULL, linewidth=.8, alpha=.5) +
-  scale_x_yearquarter(expand=expansion(mult=c(.01,.01))) +
-  scale_color_brewer(palette="Dark2", direction=-1) +
-  labs(title="Previsão de XXXXXX", y="XXXXXXX", x=NULL)
-```
-
-
-\
-
-Visualmente é possível perceber que os modelos mais adequados são os SARIMA. Pela análise das medidas de acurácia, independente da medida de acurácia calculada sobre os resíduos das previsões na base de teste.
 
 ```{r}
-accuracy(ts1.fcst, ts1.test) |> select(-.type) |>
+accuracy(fcst.agr, ts1.test) |> select(-.type) |>
   arrange(RMSE) |> 
   gt(rowname_col="stub", locale="pt") |> sub_missing() |>
-  fmt_number(c(ME:ACF1), decimals=4) |> 
+  fmt_number(c(ME,RMSE,MAE,MASE,RMSSE,ACF1), decimals=2) |> 
+  fmt_number(c(MPE,MAPE), decimals=1) |> 
   tab_options(
     heading.align="left", heading.title.font.size=pct(110), heading.subtitle.font.size=pct(90),
     column_labels.font.weight="bold", column_labels.font.size=pct(80),
@@ -438,7 +517,7 @@ accuracy(ts1.fcst, ts1.test) |> select(-.type) |>
     data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
     table.font.size=pct(90), source_notes.font.size = pct(70),
   ) |> 
-  tab_header(title = md("**Análise de medidas de acurácia sobre os resíduos de previsão**"))
+  tab_header(title = md("**Medidas de acurácia das previsões sobre a base de teste**"))
 ```
 
 \
@@ -469,66 +548,98 @@ Medidas de acurácia indepdendentes da escala dos dados originais e que permitem
 
 \
 
-TALVEZ TIRAR ISSO AQUI!
-
 -   [Autocorrelation of errors at lag 1 (ACF1):]{.underline} A autocorrelação dos erros de previsão no lag 1. Se a autocorrelação dos erros de previsão é significativamente diferente de zero, isso sugere que o modelo poderia ser melhorado pela inclusão de um termo de autorregressão adicional.
+
+
 
 \
 
-Vamos analisar os resíduos do modelo selecionado para assegurar que:
+## Serviços e Indústria
 
-1. Os resíduos não estejam correlacionados entre si.
-2. Os resíduos tenham média zero.
+
+Separa datasets de treino e teste
 
 ```{r}
-gg_tsresiduals(fit.ts1 |> select(AUTOARIMA))
+ts1.train <- ts1 |> filter(year(Trimestre)<=2019)
+ts1.test <- ts1 
 ```
 
 
-# PAREI AQUI
+\
+
+
+### 1. Modelagem
+
+
+
+```{r warning=FALSE}
+fit <- ts1.train |> model(autoARIMA = ARIMA(producao))
+
+fit |> pivot_longer(!name, names_to = "Modelo", values_to = "Parâmetros")
+
+glance(fit) |> select(name,.model,AIC:BIC) |> arrange(AICc)
+```
+
+
+### 2. Resíduos de previsão
+
+INVESTIGAR OS RESÍDUOS DE PREVISÃO DE SERVIÇOS
+
+```{r}
+augment(fit) |> 
+  features(.innov, ljung_box, lag=8, dof=c(2,4)) |> 
+  rename(lb_pvalue_2dof=lb_pvalue1, lb_pvalue_4dof=lb_pvalue2)
+
+augment(fit) |> 
+  features(.innov, box_pierce, lag=8, dof=c(2,4)) |> 
+  rename(bp_pvalue_2dof=bp_pvalue1, bp_pvalue_4dof=bp_pvalue2)
+```
+
+
+Tanto para Ljung-Box quanto Box-Pierce, os resultados não são significativos (ou seja, os p-valores são bem superiores a $0,05$). Assim, podemos concluir que os resíduos não são distinguíveis de uma série estacionária (ruído branco). 
+
+
 
 \
 
 ### 4. Forecast
 
-```{r}
-sarima.fit <- ts1.train |> model(SARIMA = ARIMA(value ~ pdq(0,1,0) + PDQ(1,0,1,4)))
-report(sarima.fit)
+
+```{r fig.asp=1}
+fcst <- fit |> forecast(h=16)
+
+fcst |> 
+  autoplot(ts1.test |> filter(year(Trimestre)>=2015), level=NULL, linewidth=.8, alpha=.5) +
+  labs(title = "Previsão de produção trimestral", x = NULL)
 ```
-
-
-```{r}
-ts1.fcst |> filter(.model=="AUTOARIMA") |> 
-  autoplot( ts1.test |> filter(year(Trimestre)>=2015) ) +
-  scale_x_yearquarter(expand=expansion(mult=c(.01,.01))) +
-  labs(title="Previsão de XXXXXX",
-       y="XXXXXXX", x=NULL)
-```
-
-
-
-```{r}
-accuracy(ts1.fcst |> filter(.model=="AUTOARIMA"), ts1.test)
-```
-
-
-
-
-
-
-
-### 5. Analisa resíduos de previsão
 
 
 \
 
-## Serviços
+PORQUE O MAPE ESTÁ ORDENADO ERRADO? O MENOR ERRO VISUALMENTE PARECE SER AGROPECUÁRIA... 
+PORQUE NÃO É MELHOR QUE O NAIVE FORECAST?
+
+```{r}
+accuracy(fcst, ts1.test) |> select(-.type) |>
+  arrange(MAPE) |> 
+  gt(rowname_col="stub", locale="pt") |> sub_missing() |>
+  fmt_number(c(ME,RMSE,MAE,MASE,RMSSE,ACF1), decimals=2) |> 
+  fmt_number(c(MPE,MAPE), decimals=1) |> 
+  tab_options(
+    heading.align="left", heading.title.font.size=pct(110), heading.subtitle.font.size=pct(90),
+    column_labels.font.weight="bold", column_labels.font.size=pct(80),
+    column_labels.text_transform="uppercase", column_labels.background.color="gray95",
+    data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
+    table.font.size=pct(90), source_notes.font.size = pct(70),
+  ) |> 
+  tab_header(title = md("**Medidas de acurácia das previsões comparadas à base de teste**"))
+```
+
+
+
 
 \
 
-## Indústria
-
-\
 
 # FIM
 
